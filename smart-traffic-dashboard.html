@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Traffic Management System</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0f;
+    --bg2: #080f17;
+    --panel: #0a1520;
+    --border: #0e2a3f;
+    --accent: #00e5ff;
+    --accent2: #00ff9d;
+    --warn: #ffaa00;
+    --danger: #ff3b3b;
+    --text: #c8dce8;
+    --muted: #4a6a82;
+    --grid: rgba(0,229,255,0.04);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Exo 2', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 300px;
+    background: radial-gradient(ellipse at 50% -20%, rgba(0,229,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* HEADER */
+  header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    background: rgba(8,15,23,0.95);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-icon {
+    width: 42px; height: 42px;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .logo-icon svg { width: 42px; height: 42px; }
+
+  .logo-text h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .logo-text p {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+  }
+
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border: 1px solid rgba(0,255,157,0.3);
+    border-radius: 20px;
+    background: rgba(0,255,157,0.05);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    letter-spacing: 1px;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent2);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,255,157,0.5); }
+    50% { opacity: 0.7; box-shadow: 0 0 0 5px rgba(0,255,157,0); }
+  }
+
+  .clock {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+
+  /* NAV */
+  nav {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    gap: 0;
+    padding: 0 32px;
+    background: rgba(8,15,23,0.9);
+    border-bottom: 1px solid var(--border);
+  }
+
+  nav button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 14px 22px;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  nav button:hover { color: var(--text); }
+  nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* MAIN LAYOUT */
+  main {
+    position: relative;
+    z-index: 5;
+    padding: 24px 32px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ─── DASHBOARD TAB ─── */
+
+  .top-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+    animation: fadeSlideIn 0.4s ease both;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+
+  .stat-card.warn::before { background: var(--warn); }
+  .stat-card.danger::before { background: var(--danger); }
+  .stat-card.green::before { background: var(--accent2); }
+
+  .stat-card .label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .stat-card .value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat-card.warn .value { color: var(--warn); }
+  .stat-card.danger .value { color: var(--danger); }
+  .stat-card.green .value { color: var(--accent2); }
+
+  .stat-card .sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .stat-icon {
+    position: absolute;
+    right: 20px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 36px;
+    opacity: 0.07;
+  }
+
+  /* INTERSECTION GRID */
+  .section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .intersections-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .intersection-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.2s;
+    animation: fadeSlideIn 0.4s ease both;
+  }
+
+  .intersection-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .intersection-card.emergency {
+    border-color: rgba(255,59,59,0.6);
+    background: rgba(255,59,59,0.04);
+    animation: emergencyBorder 1s infinite;
+  }
+
+  @keyframes emergencyBorder {
+    0%, 100% { border-color: rgba(255,59,59,0.6); box-shadow: 0 0 0 0 rgba(255,59,59,0.2); }
+    50% { border-color: rgba(255,59,59,1); box-shadow: 0 0 20px rgba(255,59,59,0.3); }
+  }
+
+  .ic-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .ic-id {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .density-badge {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    font-weight: 700;
+  }
+
+  .density-LOW { background: rgba(0,255,157,0.15); color: var(--accent2); border: 1px solid rgba(0,255,157,0.3); }
+  .density-MEDIUM { background: rgba(255,170,0,0.15); color: var(--warn); border: 1px solid rgba(255,170,0,0.3); }
+  .density-HIGH { background: rgba(255,59,59,0.15); color: var(--danger); border: 1px solid rgba(255,59,59,0.3); }
+
+  .traffic-light-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+
+  .traffic-light {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: #0a0f14;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #1a2a38;
+  }
+
+  .tl-bulb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #1a2a38;
+    transition: all 0.3s;
+  }
+
+  .tl-bulb.red.on { background: #ff3b3b; box-shadow: 0 0 10px #ff3b3b; }
+  .tl-bulb.yellow.on { background: #ffaa00; box-shadow: 0 0 10px #ffaa00; }
+  .tl-bulb.green.on { background: #00ff9d; box-shadow: 0 0 10px #00ff9d; }
+
+  .ic-stats {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .ic-stat-item .label {
+    font-size: 9px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+
+  .ic-stat-item .val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .density-bar-wrap {
+    margin-bottom: 12px;
+  }
+
+  .density-bar-wrap .label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+
+  .density-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .density-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s ease;
+  }
+
+  .ic-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    margin-top: 4px;
+  }
+
+  .ic-footer .timer {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  /* BOTTOM GRID */
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    animation: fadeSlideIn 0.5s ease both;
+  }
+
+  .panel-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  /* Mini chart */
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 100px;
+  }
+
+  .chart-bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+    justify-content: flex-end;
+  }
+
+  .chart-bar {
+    width: 100%;
+    border-radius: 3px 3px 0 0;
+    transition: height 0.8s ease;
+    min-height: 4px;
+  }
+
+  .chart-bar-label {
+    font-size: 9px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--muted);
+  }
+
+  /* Activity Log */
+  .log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .log-list::-webkit-scrollbar { width: 4px; }
+  .log-list::-webkit-scrollbar-track { background: var(--bg); }
+  .log-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 8px 10px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.02);
+    border-left: 2px solid var(--border);
+    font-size: 11px;
+    animation: logSlide 0.3s ease;
+  }
+
+  @keyframes logSlide {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .log-item.info { border-left-color: var(--accent); }
+  .log-item.warn { border-left-color: var(--warn); }
+  .log-item.danger { border-left-color: var(--danger); }
+  .log-item.success { border-left-color: var(--accent2); }
+
+  .log-time {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--muted);
+    white-space: nowrap;
+    font-size: 10px;
+  }
+
+  .log-msg { color: var(--text); line-height: 1.4; }
+
+  /* ─── CONTROL TAB ─── */
+  .control-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .control-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+  }
+
+  .control-panel h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .form-group {
+    margin-bottom: 18px;
+  }
+
+  .form-group label {
+    display: block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .form-group select,
+  .form-group input[type="number"],
+  .form-group input[type="range"] {
+    width: 100%;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: none;
+  }
+
+  .form-group select:focus,
+  .form-group input:focus { border-color: var(--accent); }
+
+  .form-group select option { background: #0a1520; }
+
+  .range-val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 22px;
+    color: var(--accent);
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    height: 6px !important;
+    padding: 0 !important;
+    background: var(--border) !important;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+    cursor: pointer;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  .btn-primary:hover {
+    background: #33ecff;
+    box-shadow: 0 0 20px rgba(0,229,255,0.4);
+    transform: translateY(-1px);
+  }
+
+  .btn-danger {
+    background: rgba(255,59,59,0.15);
+    color: var(--danger);
+    border: 1px solid rgba(255,59,59,0.4);
+  }
+
+  .btn-danger:hover {
+    background: rgba(255,59,59,0.3);
+    box-shadow: 0 0 20px rgba(255,59,59,0.3);
+  }
+
+  .btn-warn {
+    background: rgba(255,170,0,0.15);
+    color: var(--warn);
+    border: 1px solid rgba(255,170,0,0.4);
+    margin-top: 10px;
+  }
+
+  .btn-warn:hover {
+    background: rgba(255,170,0,0.3);
+    box-shadow: 0 0 20px rgba(255,170,0,0.3);
+  }
+
+  /* Toast */
+  .toast-container {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .toast {
+    padding: 12px 18px;
+    border-radius: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    border: 1px solid;
+    animation: toastIn 0.3s ease;
+    max-width: 320px;
+  }
+
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .toast.success { background: rgba(0,255,157,0.1); border-color: rgba(0,255,157,0.4); color: var(--accent2); }
+  .toast.error { background: rgba(255,59,59,0.1); border-color: rgba(255,59,59,0.4); color: var(--danger); }
+  .toast.info { background: rgba(0,229,255,0.1); border-color: rgba(0,229,255,0.4); color: var(--accent); }
+
+  /* Upload area */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(0,229,255,0.02);
+  }
+
+  .upload-zone:hover {
+    border-color: var(--accent);
+    background: rgba(0,229,255,0.05);
+  }
+
+  .upload-zone .icon { font-size: 32px; margin-bottom: 10px; }
+  .upload-zone p { font-size: 12px; color: var(--muted); font-family: 'Share Tech Mono', monospace; }
+  .upload-zone input { display: none; }
+
+  /* ─── ANALYTICS TAB ─── */
+  .analytics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .big-chart-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    grid-column: span 3;
+  }
+
+  .chart-line-wrap {
+    position: relative;
+    height: 160px;
+    margin-top: 10px;
+  }
+
+  canvas.line-chart {
+    width: 100% !important;
+    height: 160px !important;
+  }
+
+  .heat-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+  }
+
+  .heat-cell {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    color: rgba(255,255,255,0.5);
+    transition: all 0.3s;
+    cursor: default;
+  }
+
+  .fade-in-delay-1 { animation-delay: 0.1s; }
+  .fade-in-delay-2 { animation-delay: 0.2s; }
+  .fade-in-delay-3 { animation-delay: 0.3s; }
+
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .top-stats { grid-template-columns: 1fr 1fr; }
+    .intersections-grid { grid-template-columns: 1fr 1fr; }
+    .bottom-grid { grid-template-columns: 1fr; }
+    .control-grid { grid-template-columns: 1fr; }
+    .analytics-grid { grid-template-columns: 1fr; }
+    .big-chart-panel { grid-column: span 1; }
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 14px 16px; }
+    main { padding: 16px; }
+    .top-stats { grid-template-columns: 1fr 1fr; }
+    .intersections-grid { grid-template-columns: 1fr; }
+    .clock { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="21" cy="21" r="20" stroke="#0e2a3f" stroke-width="1.5"/>
+        <rect x="18" y="5" width="6" height="32" rx="3" fill="#0e2a3f"/>
+        <rect x="5" y="18" width="32" height="6" rx="3" fill="#0e2a3f"/>
+        <circle cx="21" cy="11" r="4" fill="#ff3b3b"/>
+        <circle cx="21" cy="21" r="4" fill="#ffaa00"/>
+        <circle cx="21" cy="31" r="4" fill="#00ff9d"/>
+        <circle cx="11" cy="21" r="3" fill="#00e5ff" opacity="0.6"/>
+        <circle cx="31" cy="21" r="3" fill="#00e5ff" opacity="0.6"/>
+      </svg>
+    </div>
+    <div class="logo-text">
+      <h1>SmartTraffic AI</h1>
+      <p>// INTELLIGENT TRAFFIC MANAGEMENT SYSTEM</p>
+    </div>
+  </div>
+  <div class="header-status">
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      SYSTEM ONLINE
+    </div>
+    <div class="clock" id="clock">00:00:00</div>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="switchTab('dashboard', this)">📊 Dashboard</button>
+  <button onclick="switchTab('control', this)">🎛 Control Panel</button>
+  <button onclick="switchTab('analytics', this)">📈 Analytics</button>
+  <button onclick="switchTab('emergency', this)">🚨 Emergency</button>
+</nav>
+
+<main>
+
+  <!-- ═══════════ DASHBOARD TAB ═══════════ -->
+  <div id="tab-dashboard" class="tab-content active">
+    <div class="top-stats">
+      <div class="stat-card fade-in-delay-1">
+        <div class="label">Total Vehicles</div>
+        <div class="value" id="total-vehicles">0</div>
+        <div class="sub">↑ 12% from last cycle</div>
+        <div class="stat-icon">🚗</div>
+      </div>
+      <div class="stat-card warn fade-in-delay-2">
+        <div class="label">High Density Zones</div>
+        <div class="value" id="high-density">0</div>
+        <div class="sub">Intersections requiring attention</div>
+        <div class="stat-icon">⚠️</div>
+      </div>
+      <div class="stat-card danger fade-in-delay-3">
+        <div class="label">Active Emergencies</div>
+        <div class="value" id="active-emergencies">0</div>
+        <div class="sub">Emergency vehicles detected</div>
+        <div class="stat-icon">🚑</div>
+      </div>
+      <div class="stat-card green">
+        <div class="label">Avg Signal Efficiency</div>
+        <div class="value" id="avg-efficiency">0%</div>
+        <div class="sub">AI-optimized timing</div>
+        <div class="stat-icon">✅</div>
+      </div>
+    </div>
+
+    <div class="section-title">Live Intersection Status</div>
+
+    <div class="intersections-grid" id="intersections-grid">
+      <!-- Populated by JS -->
+    </div>
+
+    <div class="bottom-grid">
+      <div class="panel">
+        <div class="panel-title">⏱ Vehicles per Intersection (Last Cycle)</div>
+        <div class="chart-bars" id="bar-chart"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">📋 Activity Log</div>
+        <div class="log-list" id="activity-log"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ CONTROL TAB ═══════════ -->
+  <div id="tab-control" class="tab-content">
+    <div class="control-grid">
+      <div class="control-panel">
+        <h3>📸 Upload Traffic Data</h3>
+        <div class="form-group">
+          <label>Intersection ID</label>
+          <select id="upload-intersection">
+            <option value="A1">A1 — Main St & 1st Ave</option>
+            <option value="A2">A2 — Main St & 2nd Ave</option>
+            <option value="B1">B1 — Oak Rd & 1st Ave</option>
+            <option value="B2">B2 — Oak Rd & 2nd Ave</option>
+            <option value="C1">C1 — Park Blvd & 1st Ave</option>
+            <option value="C2">C2 — Park Blvd & 2nd Ave</option>
+          </select>
+        </div>
+        <div class="upload-zone" onclick="document.getElementById('file-input').click()">
+          <div class="icon">📁</div>
+          <p id="upload-label">Click to upload image/video feed<br>Supports: JPG, PNG, MP4</p>
+          <input type="file" id="file-input" accept="image/*,video/*" onchange="handleFileSelect(event)">
+        </div>
+        <br>
+        <button class="btn btn-primary" onclick="simulateUpload()">⬆ UPLOAD & ANALYZE</button>
+      </div>
+
+      <div class="control-panel">
+        <h3>🚦 Signal Timing Override</h3>
+        <div class="form-group">
+          <label>Select Intersection</label>
+          <select id="signal-intersection">
+            <option value="A1">A1 — Main St & 1st Ave</option>
+            <option value="A2">A2 — Main St & 2nd Ave</option>
+            <option value="B1">B1 — Oak Rd & 1st Ave</option>
+            <option value="B2">B2 — Oak Rd & 2nd Ave</option>
+            <option value="C1">C1 — Park Blvd & 1st Ave</option>
+            <option value="C2">C2 — Park Blvd & 2nd Ave</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Green Phase Duration (seconds)</label>
+          <input type="range" id="timing-slider" min="10" max="120" value="45" oninput="document.getElementById('timing-val').textContent=this.value+'s'">
+          <div class="range-val" id="timing-val">45s</div>
+        </div>
+        <button class="btn btn-primary" onclick="updateSignal()">⚡ UPDATE SIGNAL TIMING</button>
+        <button class="btn btn-warn" onclick="resetAllSignals()">🔄 RESET ALL TO AUTO</button>
+      </div>
+
+      <div class="control-panel">
+        <h3>🚑 Emergency Vehicle Control</h3>
+        <div class="form-group">
+          <label>Target Intersection</label>
+          <select id="emergency-intersection">
+            <option value="A1">A1 — Main St & 1st Ave</option>
+            <option value="A2">A2 — Main St & 2nd Ave</option>
+            <option value="B1">B1 — Oak Rd & 1st Ave</option>
+            <option value="B2">B2 — Oak Rd & 2nd Ave</option>
+            <option value="C1">C1 — Park Blvd & 1st Ave</option>
+            <option value="C2">C2 — Park Blvd & 2nd Ave</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Vehicle Type</label>
+          <select id="emergency-type">
+            <option value="ambulance">🚑 Ambulance</option>
+            <option value="fire">🚒 Fire Truck</option>
+            <option value="police">🚓 Police</option>
+            <option value="vip">🚗 VIP Convoy</option>
+          </select>
+        </div>
+        <button class="btn btn-danger" onclick="triggerEmergency()">🚨 PRIORITY OVERRIDE</button>
+      </div>
+
+      <div class="control-panel">
+        <h3>📊 System Controls</h3>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <button class="btn btn-primary" onclick="fetchDashboard()">🔄 REFRESH DASHBOARD</button>
+          <button class="btn btn-warn" onclick="simulateTrafficCycle()">⚙ SIMULATE TRAFFIC CYCLE</button>
+          <div style="margin-top:8px;padding:12px;background:rgba(0,229,255,0.04);border:1px solid var(--border);border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);line-height:1.8;">
+            <div>Backend: <span style="color:var(--accent2)">http://localhost:3000</span></div>
+            <div>Auto-refresh: <span style="color:var(--accent2)">Every 10s</span></div>
+            <div>Intersections: <span style="color:var(--accent2)" id="ic-count">6</span></div>
+            <div>AI Engine: <span style="color:var(--accent2)">Mock (v1.0)</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ ANALYTICS TAB ═══════════ -->
+  <div id="tab-analytics" class="tab-content">
+    <div class="analytics-grid">
+      <div class="big-chart-panel">
+        <div class="panel-title">📈 Traffic Volume Over Time (Simulated)</div>
+        <canvas id="lineChart" class="line-chart"></canvas>
+      </div>
+
+      <div class="panel" style="grid-column:span 1">
+        <div class="panel-title">🌡 Density Heatmap (Hour × Intersection)</div>
+        <div class="heat-grid" id="heatmap"></div>
+      </div>
+
+      <div class="panel" style="grid-column:span 2">
+        <div class="panel-title">📊 Intersection Performance Breakdown</div>
+        <div id="perf-table" style="font-family:'Share Tech Mono',monospace;font-size:11px;">
+          <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr 1fr;gap:8px;color:var(--muted);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+            <span>ID</span><span>Vehicles</span><span>Density</span><span>Timing</span><span>Status</span>
+          </div>
+          <div id="perf-rows"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ EMERGENCY TAB ═══════════ -->
+  <div id="tab-emergency" class="tab-content">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="panel" style="grid-column:span 2">
+        <div class="panel-title" style="color:var(--danger)">⚠️ EMERGENCY STATUS — LIVE MONITOR</div>
+        <div id="emergency-status-list" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">📡 Emergency Response Log</div>
+        <div id="emergency-log" class="log-list"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">🗺 Active Corridors</div>
+        <div id="corridors" style="font-size:12px;font-family:'Share Tech Mono',monospace;color:var(--muted);line-height:2.2;">
+          No active emergency corridors.<br>All intersections operating normally.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ═══════════════════════════════════════
+// DATA MODEL
+// ═══════════════════════════════════════
+const BASE_URL = 'http://localhost:3000';
+
+const intersectionMeta = {
+  A1: 'Main St & 1st Ave',
+  A2: 'Main St & 2nd Ave',
+  B1: 'Oak Rd & 1st Ave',
+  B2: 'Oak Rd & 2nd Ave',
+  C1: 'Park Blvd & 1st Ave',
+  C2: 'Park Blvd & 2nd Ave',
+};
+
+let state = {
+  intersections: {},
+  log: [],
+  emergencyLog: [],
+  volumeHistory: [],
+};
+
+// Initialize state
+Object.keys(intersectionMeta).forEach(id => {
+  state.intersections[id] = {
+    id,
+    vehicleCount: Math.floor(Math.random() * 40) + 5,
+    density: ['LOW', 'MEDIUM', 'HIGH'][Math.floor(Math.random() * 3)],
+    signalPhase: ['RED', 'YELLOW', 'GREEN'][Math.floor(Math.random() * 3)],
+    timing: Math.floor(Math.random() * 60) + 20,
+    emergency: false,
+    efficiency: Math.floor(Math.random() * 30) + 70,
+  };
+});
+
+// ═══════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toTimeString().slice(0,8);
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  btn.classList.add('active');
+  if (tab === 'analytics') renderAnalytics();
+  if (tab === 'emergency') renderEmergencyTab();
+}
+
+// ═══════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════
+function showToast(msg, type = 'info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// ═══════════════════════════════════════
+// LOG
+// ═══════════════════════════════════════
+function addLog(msg, type = 'info', list = 'activity') {
+  const now = new Date().toTimeString().slice(0,8);
+  const entry = { time: now, msg, type };
+
+  if (list === 'emergency') {
+    state.emergencyLog.unshift(entry);
+    renderEmergencyLog();
+  } else {
+    state.log.unshift(entry);
+    if (state.log.length > 50) state.log.pop();
+    renderLog();
+  }
+}
+
+function renderLog() {
+  const el = document.getElementById('activity-log');
+  if (!el) return;
+  el.innerHTML = state.log.slice(0, 20).map(e =>
+    `<div class="log-item ${e.type}">
+      <span class="log-time">${e.time}</span>
+      <span class="log-msg">${e.msg}</span>
+    </div>`
+  ).join('');
+}
+
+function renderEmergencyLog() {
+  const el = document.getElementById('emergency-log');
+  if (!el) return;
+  el.innerHTML = state.emergencyLog.slice(0, 20).map(e =>
+    `<div class="log-item ${e.type}">
+      <span class="log-time">${e.time}</span>
+      <span class="log-msg">${e.msg}</span>
+    </div>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════
+// RENDER DASHBOARD
+// ═══════════════════════════════════════
+function renderDashboard() {
+  const ics = Object.values(state.intersections);
+
+  // Stats
+  const totalVehicles = ics.reduce((s, i) => s + i.vehicleCount, 0);
+  const highDensity = ics.filter(i => i.density === 'HIGH').length;
+  const emergencies = ics.filter(i => i.emergency).length;
+  const avgEff = Math.round(ics.reduce((s, i) => s + i.efficiency, 0) / ics.length);
+
+  animateCount('total-vehicles', totalVehicles);
+  animateCount('high-density', highDensity);
+  animateCount('active-emergencies', emergencies);
+  document.getElementById('avg-efficiency').textContent = avgEff + '%';
+
+  // Intersection cards
+  const grid = document.getElementById('intersections-grid');
+  grid.innerHTML = ics.map(ic => {
+    const barColor = ic.density === 'HIGH' ? '#ff3b3b' : ic.density === 'MEDIUM' ? '#ffaa00' : '#00ff9d';
+    const barPct = Math.min(100, Math.round((ic.vehicleCount / 50) * 100));
+    const red = ic.signalPhase === 'RED';
+    const yellow = ic.signalPhase === 'YELLOW';
+    const green = ic.signalPhase === 'GREEN';
+    return `
+    <div class="intersection-card ${ic.emergency ? 'emergency' : ''}" onclick="selectIntersection('${ic.id}')">
+      <div class="ic-header">
+        <div>
+          <div class="ic-id">${ic.id}</div>
+          <div style="font-size:10px;color:var(--muted);font-family:'Share Tech Mono',monospace;margin-top:2px">${intersectionMeta[ic.id]}</div>
+        </div>
+        <div>
+          <div class="density-badge density-${ic.density}">${ic.density}</div>
+          ${ic.emergency ? '<div class="density-badge density-HIGH" style="margin-top:4px">🚨 EMERGENCY</div>' : ''}
+        </div>
+      </div>
+      <div class="traffic-light-row">
+        <div class="traffic-light">
+          <div class="tl-bulb red ${red ? 'on' : ''}"></div>
+          <div class="tl-bulb yellow ${yellow ? 'on' : ''}"></div>
+          <div class="tl-bulb green ${green ? 'on' : ''}"></div>
+        </div>
+        <div class="ic-stats">
+          <div class="ic-stat-item">
+            <div class="label">VEHICLES</div>
+            <div class="val">${ic.vehicleCount}</div>
+          </div>
+          <div class="ic-stat-item">
+            <div class="label">TIMING</div>
+            <div class="val">${ic.timing}s</div>
+          </div>
+          <div class="ic-stat-item">
+            <div class="label">PHASE</div>
+            <div class="val" style="color:${red?'#ff3b3b':yellow?'#ffaa00':'#00ff9d'};font-size:12px">${ic.signalPhase}</div>
+          </div>
+          <div class="ic-stat-item">
+            <div class="label">EFF.</div>
+            <div class="val">${ic.efficiency}%</div>
+          </div>
+        </div>
+      </div>
+      <div class="density-bar-wrap">
+        <div class="label"><span>TRAFFIC DENSITY</span><span>${barPct}%</span></div>
+        <div class="density-bar">
+          <div class="density-bar-fill" style="width:${barPct}%;background:${barColor}"></div>
+        </div>
+      </div>
+      <div class="ic-footer">
+        <span>Last update: just now</span>
+        <span class="timer">T-${ic.timing}s</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Bar chart
+  renderBarChart(ics);
+}
+
+function animateCount(id, target) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const start = parseInt(el.textContent) || 0;
+  const diff = target - start;
+  const steps = 20;
+  let step = 0;
+  const interval = setInterval(() => {
+    step++;
+    el.textContent = Math.round(start + (diff * step / steps));
+    if (step >= steps) { clearInterval(interval); el.textContent = target; }
+  }, 20);
+}
+
+function renderBarChart(ics) {
+  const el = document.getElementById('bar-chart');
+  if (!el) return;
+  const max = Math.max(...ics.map(i => i.vehicleCount), 1);
+  el.innerHTML = ics.map(ic => {
+    const h = Math.round((ic.vehicleCount / max) * 90);
+    const color = ic.density === 'HIGH' ? '#ff3b3b' : ic.density === 'MEDIUM' ? '#ffaa00' : '#00ff9d';
+    return `
+    <div class="chart-bar-wrap">
+      <div style="font-size:9px;font-family:'Share Tech Mono';color:var(--muted)">${ic.vehicleCount}</div>
+      <div class="chart-bar" style="height:${h}%;background:${color};opacity:0.8"></div>
+      <div class="chart-bar-label">${ic.id}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectIntersection(id) {
+  const ic = state.intersections[id];
+  showToast(`[${id}] ${ic.vehicleCount} vehicles | ${ic.density} density | ${ic.signalPhase} phase`, 'info');
+}
+
+// ═══════════════════════════════════════
+// API CALLS (with fallback simulation)
+// ═══════════════════════════════════════
+async function fetchDashboard() {
+  try {
+    const res = await fetch(`${BASE_URL}/dashboard`, { signal: AbortSignal.timeout(3000) });
+    const data = await res.json();
+    // Merge real data if available
+    if (data.intersections) {
+      Object.assign(state.intersections, data.intersections);
+    }
+    addLog('Dashboard refreshed from server', 'success');
+  } catch (e) {
+    // Simulate new data
+    simulateTrafficCycle(true);
+  }
+  renderDashboard();
+}
+
+async function updateSignal() {
+  const id = document.getElementById('signal-intersection').value;
+  const timing = parseInt(document.getElementById('timing-slider').value);
+  try {
+    await fetch(`${BASE_URL}/signal/update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ intersectionId: id, timing }),
+      signal: AbortSignal.timeout(3000),
+    });
+  } catch (_) {}
+  state.intersections[id].timing = timing;
+  addLog(`Signal [${id}] updated → ${timing}s green phase`, 'success');
+  showToast(`✓ Signal ${id} updated to ${timing}s`, 'success');
+  renderDashboard();
+}
+
+async function triggerEmergency() {
+  const id = document.getElementById('emergency-intersection').value;
+  const type = document.getElementById('emergency-type').value;
+  const labels = { ambulance: '🚑 Ambulance', fire: '🚒 Fire Truck', police: '🚓 Police', vip: '🚗 VIP Convoy' };
+  try {
+    await fetch(`${BASE_URL}/emergency`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ intersectionId: id }),
+      signal: AbortSignal.timeout(3000),
+    });
+  } catch (_) {}
+  state.intersections[id].emergency = true;
+  state.intersections[id].signalPhase = 'GREEN';
+  state.intersections[id].timing = 999;
+  addLog(`EMERGENCY: ${labels[type]} priority at [${id}]`, 'danger');
+  addLog(`[${id}] signal forced GREEN — all conflicting signals RED`, 'danger', 'emergency');
+  showToast(`🚨 Emergency priority activated at ${id}`, 'error');
+  renderDashboard();
+  renderEmergencyTab();
+  // Auto clear after 15s
+  setTimeout(() => clearEmergency(id), 15000);
+}
+
+function clearEmergency(id) {
+  if (state.intersections[id]) {
+    state.intersections[id].emergency = false;
+    state.intersections[id].signalPhase = 'GREEN';
+    state.intersections[id].timing = Math.floor(Math.random() * 60) + 20;
+    addLog(`[${id}] Emergency cleared — resuming normal ops`, 'success', 'emergency');
+    showToast(`✓ Emergency at ${id} cleared`, 'success');
+    renderDashboard();
+    renderEmergencyTab();
+  }
+}
+
+async function simulateUpload() {
+  const id = document.getElementById('upload-intersection').value;
+  showToast(`Analyzing traffic data for ${id}...`, 'info');
+  await new Promise(r => setTimeout(r, 1200));
+  const vehicles = Math.floor(Math.random() * 50) + 5;
+  const density = vehicles > 35 ? 'HIGH' : vehicles > 18 ? 'MEDIUM' : 'LOW';
+  state.intersections[id].vehicleCount = vehicles;
+  state.intersections[id].density = density;
+  state.intersections[id].timing = density === 'HIGH' ? 90 : density === 'MEDIUM' ? 55 : 30;
+  addLog(`[${id}] AI analysis: ${vehicles} vehicles detected, density ${density}`, density === 'HIGH' ? 'danger' : density === 'MEDIUM' ? 'warn' : 'success');
+  showToast(`✓ ${id}: ${vehicles} vehicles, ${density} density`, 'success');
+  renderDashboard();
+}
+
+function resetAllSignals() {
+  Object.values(state.intersections).forEach(ic => {
+    ic.timing = Math.floor(Math.random() * 60) + 20;
+    ic.emergency = false;
+  });
+  addLog('All signals reset to AI auto-mode', 'info');
+  showToast('✓ All signals reset to auto', 'success');
+  renderDashboard();
+}
+
+function simulateTrafficCycle(silent = false) {
+  const phases = ['RED', 'YELLOW', 'GREEN'];
+  const densities = ['LOW', 'MEDIUM', 'HIGH'];
+  Object.values(state.intersections).forEach(ic => {
+    if (!ic.emergency) {
+      ic.vehicleCount = Math.max(1, ic.vehicleCount + Math.floor(Math.random() * 20) - 8);
+      ic.density = ic.vehicleCount > 35 ? 'HIGH' : ic.vehicleCount > 18 ? 'MEDIUM' : 'LOW';
+      ic.signalPhase = phases[Math.floor(Math.random() * 3)];
+      ic.timing = ic.density === 'HIGH' ? Math.floor(Math.random() * 30) + 70 :
+                  ic.density === 'MEDIUM' ? Math.floor(Math.random() * 30) + 40 :
+                  Math.floor(Math.random() * 20) + 20;
+      ic.efficiency = Math.min(99, Math.max(60, ic.efficiency + Math.floor(Math.random() * 10) - 4));
+    }
+  });
+  state.volumeHistory.push(Object.values(state.intersections).reduce((s,i) => s+i.vehicleCount, 0));
+  if (state.volumeHistory.length > 20) state.volumeHistory.shift();
+  if (!silent) {
+    addLog('Traffic cycle simulated — AI timings updated', 'info');
+    showToast('⚙ Traffic cycle simulated', 'info');
+  }
+  renderDashboard();
+}
+
+function handleFileSelect(e) {
+  const f = e.target.files[0];
+  if (f) document.getElementById('upload-label').textContent = '📄 ' + f.name;
+}
+
+// ═══════════════════════════════════════
+// ANALYTICS
+// ═══════════════════════════════════════
+function renderAnalytics() {
+  // Line chart on canvas
+  const canvas = document.getElementById('lineChart');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.parentElement.offsetWidth || 800;
+  canvas.height = 160;
+
+  const hist = state.volumeHistory.length < 2
+    ? Array.from({length:12}, () => Math.floor(Math.random()*150)+50)
+    : state.volumeHistory;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const pad = 20;
+  const w = canvas.width - pad * 2;
+  const h = canvas.height - pad * 2;
+  const max = Math.max(...hist) * 1.2;
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(14,42,63,0.8)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad + (h / 4) * i;
+    ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(pad + w, y); ctx.stroke();
+  }
+
+  // Area
+  ctx.beginPath();
+  hist.forEach((v, i) => {
+    const x = pad + (i / (hist.length - 1)) * w;
+    const y = pad + h - (v / max) * h;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  const lastX = pad + w;
+  ctx.lineTo(lastX, pad + h);
+  ctx.lineTo(pad, pad + h);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, pad, 0, pad + h);
+  grad.addColorStop(0, 'rgba(0,229,255,0.3)');
+  grad.addColorStop(1, 'rgba(0,229,255,0.01)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  hist.forEach((v, i) => {
+    const x = pad + (i / (hist.length - 1)) * w;
+    const y = pad + h - (v / max) * h;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = '#00e5ff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Dots
+  hist.forEach((v, i) => {
+    const x = pad + (i / (hist.length - 1)) * w;
+    const y = pad + h - (v / max) * h;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#00e5ff';
+    ctx.fill();
+  });
+
+  // Heatmap
+  const hm = document.getElementById('heatmap');
+  const hours = ['6am','9am','12pm','3pm','6pm','9pm'];
+  const ics = Object.keys(state.intersections);
+  hm.innerHTML = '';
+  ics.forEach(id => {
+    hours.forEach(h => {
+      const v = Math.floor(Math.random() * 100);
+      const alpha = 0.1 + (v / 100) * 0.7;
+      const color = v > 70 ? `rgba(255,59,59,${alpha})` : v > 40 ? `rgba(255,170,0,${alpha})` : `rgba(0,255,157,${alpha})`;
+      const cell = document.createElement('div');
+      cell.className = 'heat-cell';
+      cell.style.background = color;
+      cell.title = `${id} @ ${h}: ${v} vehicles`;
+      cell.textContent = v;
+      hm.appendChild(cell);
+    });
+  });
+
+  // Perf table
+  const rows = document.getElementById('perf-rows');
+  const icsArr = Object.values(state.intersections);
+  rows.innerHTML = icsArr.map(ic => {
+    const col = ic.density === 'HIGH' ? 'var(--danger)' : ic.density === 'MEDIUM' ? 'var(--warn)' : 'var(--accent2)';
+    const phaseCol = ic.signalPhase === 'RED' ? '#ff3b3b' : ic.signalPhase === 'YELLOW' ? '#ffaa00' : '#00ff9d';
+    return `<div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr 1fr;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--accent);font-weight:700">${ic.id}</span>
+      <span>${ic.vehicleCount}</span>
+      <span style="color:${col}">${ic.density}</span>
+      <span>${ic.timing}s</span>
+      <span style="color:${phaseCol}">${ic.signalPhase}</span>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// EMERGENCY TAB
+// ═══════════════════════════════════════
+function renderEmergencyTab() {
+  const statusList = document.getElementById('emergency-status-list');
+  const ics = Object.values(state.intersections);
+  const active = ics.filter(i => i.emergency);
+
+  if (active.length === 0) {
+    statusList.innerHTML = `
+    <div style="text-align:center;padding:30px;color:var(--accent2);font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:2px;">
+      ✅ ALL CLEAR — NO ACTIVE EMERGENCIES<br>
+      <span style="opacity:0.5;font-size:10px">System monitoring all intersections</span>
+    </div>`;
+  } else {
+    statusList.innerHTML = active.map(ic => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(255,59,59,0.07);border:1px solid rgba(255,59,59,0.4);border-radius:6px;">
+      <div>
+        <div style="font-family:'Orbitron';font-size:16px;color:var(--danger)">${ic.id}</div>
+        <div style="font-size:11px;color:var(--muted);font-family:'Share Tech Mono';margin-top:3px">${intersectionMeta[ic.id]} — EMERGENCY OVERRIDE ACTIVE</div>
+      </div>
+      <button class="btn btn-danger" style="width:auto;padding:8px 16px" onclick="clearEmergency('${ic.id}')">CLEAR</button>
+    </div>`).join('');
+  }
+
+  // Corridors
+  const corr = document.getElementById('corridors');
+  if (active.length > 0) {
+    corr.innerHTML = active.map(ic => `
+    <div style="color:var(--danger)">🚨 ${ic.id} → Priority corridor active</div>
+    <div style="color:var(--muted);font-size:10px;margin-bottom:8px">All conflicting approaches HELD RED</div>
+    `).join('');
+  } else {
+    corr.innerHTML = 'No active emergency corridors.<br>All intersections operating normally.';
+  }
+
+  renderEmergencyLog();
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+// Seed some log entries
+const seedLogs = [
+  ['System initialized — monitoring 6 intersections', 'success'],
+  ['AI engine started — adaptive timing enabled', 'info'],
+  ['Auto-refresh active (10s interval)', 'info'],
+  ['All signals calibrated to baseline', 'info'],
+];
+seedLogs.forEach(([msg, type]) => addLog(msg, type));
+
+// Seed some volume history
+for (let i = 0; i < 8; i++) state.volumeHistory.push(Math.floor(Math.random()*120)+50);
+
+renderDashboard();
+
+// Auto refresh every 10s
+setInterval(() => {
+  simulateTrafficCycle(true);
+}, 10000);
+</script>
+</body>
+</html>
